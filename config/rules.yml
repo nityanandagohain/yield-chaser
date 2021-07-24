@@ -1,0 +1,11 @@
+groups:
+- name: AllInstances
+  rules:
+  - alert: Notification
+    expr: abs(delta(APY_CHANGE_GAGUE[10m])) > 10
+    for: 0m
+    labels:
+      severity: warning
+    annotations:
+      summary: change in APY 
+      description: "Change in APY of value\n  VALUE = {{ $value }}\n  LABELS = {{ $labels }}"
