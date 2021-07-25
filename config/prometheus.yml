@@ -6,11 +6,17 @@ global:
 rule_files:
   - rules.yml
 
+
+alerting:
+  alertmanagers:
+  - static_configs:
+    - targets:
+      - alertmanager:9093
   
 scrape_configs:
   - job_name: prometheus
     static_configs:
       - targets: ["localhost:9090"]
-  - job_name: simple_server
+  - job_name: apy_monitor_job
     static_configs:
       - targets: ["192.168.0.105:8090"]

@@ -1,10 +1,11 @@
 groups:
-- name: AllInstances
+- name: apy
   rules:
   - alert: Notification
     expr: abs(delta(APY_CHANGE_GAGUE[10m])) > 10
     for: 0m
     labels:
+      app: apy
       severity: warning
     annotations:
       summary: change in APY 

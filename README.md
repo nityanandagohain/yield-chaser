@@ -4,11 +4,10 @@
 Infra for monitoring Defi assets
 
 
-### run prometheus
-docker run \
-    -p 9090:9090 \
-    -v /Users/nityananda/projects/ethodyssey/yield-chaser/prometheus/config:/etc/prometheus \
-    prom/prometheus
-    
-https://tomgregory.com/how-and-when-to-use-a-prometheus-gauge/
-https://www.robustperception.io/how-does-a-prometheus-gauge-work
+## to run the project
+1) `docker-compose up` (to start prometheus and alertmanager)
+2) `go run server.go`
+3) `node webhook/server.js`
+
+
+The alerts will be logged in node server.

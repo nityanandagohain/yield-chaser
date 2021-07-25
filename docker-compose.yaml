@@ -1,0 +1,34 @@
+version: '2'
+
+services:
+    prometheus:
+        image: prom/prometheus
+        # privileged: true
+        volumes:
+            - ./config:/etc/prometheus
+        command:
+            - '--config.file=/etc/prometheus/prometheus.yml'
+        ports:
+            - '9090:9090'
+        networks:
+            - promnet
+
+    # node-exporter:
+    #     image: prom/node-exporter
+    #     ports:
+    #         - '9100:9100'
+
+    alertmanager:
+        image: prom/alertmanager
+        # privileged: true
+        volumes:
+             - ./config/alertmanager.yml:/alertmanager.yml
+        command:
+            - '--config.file=/alertmanager.yml'
+        ports:
+            - '9093:9093'
+        networks:
+            - promnet
+networks:
+    promnet:
+        driver: bridge
