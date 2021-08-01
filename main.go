@@ -2,15 +2,17 @@ package main
 
 import (
 	"log"
-	"net/http"
+	"os"
 	"sync"
 	"time"
 
 	"github.com/go-resty/resty/v2"
 	"github.com/nityanandagohain/yield-chaser/client"
+	"github.com/nityanandagohain/yield-chaser/controllers"
 	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
+
+var server = controllers.Server{}
 
 var gaugeVector = prometheus.NewGaugeVec(
 	prometheus.GaugeOpts{
@@ -40,18 +42,18 @@ func monitor(shutdownChannel chan bool, waitGroup *sync.WaitGroup, name string) 
 func main() {
 	log.Println("Starting application...")
 
-	// register metric
-	prometheus.MustRegister(gaugeVector)
-	// endpoint for exposing metrics
-	http.Handle("/metrics", promhttp.Handler())
-
 	shutdownChannel := make(chan bool)
 	waitGroup := &sync.WaitGroup{}
 
 	waitGroup.Add(1)
 	go monitor(shutdownChannel, waitGroup, "zapper")
 
-	http.ListenAndServe(":8090", nil)
+	port := os.Getenv("PORT") //Get port from .env file, we did not specify any port so this should return an empty string when tested locally
+	if port == "" {
+		port = "8090" //localhost
+	}
+
+	server.Initialize(os.Getenv("DATABASE_URL"), ":"+port)
 	shutdownChannel <- true
 	log.Println("Received quit. Sending shutdown and waiting on goroutines...")
 

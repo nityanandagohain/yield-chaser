@@ -24,7 +24,7 @@ func GetAPY(client *resty.Client, gaugeVector *prometheus.GaugeVec) {
 	// 	SetResult(result).
 	// 	Get("https://api.zapper.fi/v1/pool-stats/1inch?network=ethereum&api_key=96e0cc51-a62e-42ca-acee-910ea7d2a241")
 	// if err != nil {
-	// 	log.Fatalf("Failed to create resty client : %v", err)
+	// 	log.Println("Failed to create resty client : %v", err)
 	// }
 	// calculate APY
 
@@ -47,11 +47,11 @@ func GetNewFarms(client *resty.Client) {
 	}
 	res, err := client.R().SetBody(payload).Post("https://api.thegraph.com/subgraphs/name/uniswap/uniswap-v3")
 	if err != nil {
-		log.Fatal("Failed to query subgraph", err.Error())
+		log.Println("Failed to query subgraph", err.Error())
 	}
 	jsonParsed, err := gabs.ParseJSON(res.Body())
 	if err != nil {
-		log.Fatal("Failed to unmarshal json fromm subgraph", err.Error())
+		log.Println("Failed to unmarshal json fromm subgraph", err.Error())
 	}
 
 	newpools := []string{}
@@ -84,12 +84,12 @@ func GetNewFarms(client *resty.Client) {
 
 	res, err = client.R().SetBody(payload).Post("https://api.thegraph.com/subgraphs/name/uniswap/uniswap-v3")
 	if err != nil {
-		log.Fatal("Failed to query subgraph", err.Error())
+		log.Println("Failed to query subgraph", err.Error())
 	}
 
 	poolsDataJson, err := gabs.ParseJSON(res.Body())
 	if err != nil {
-		log.Fatalf("failed to parse pools response body")
+		log.Println("failed to parse pools response body")
 	}
 
 	// fmt.Println(poolsDataJson)
@@ -107,7 +107,7 @@ func GetNewFarms(client *resty.Client) {
 		// send notification
 		_, err = client.R().SetBody(payload).Post("http://localhost:8080/notification")
 		if err != nil {
-			log.Fatal("Failed to query subgraph", err.Error())
+			log.Println("Failed to query subgraph", err.Error())
 		}
 
 		break
