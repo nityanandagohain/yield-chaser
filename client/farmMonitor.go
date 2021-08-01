@@ -100,8 +100,8 @@ func GetNewFarms(client *resty.Client) {
 
 		payload = map[string]string{
 
-			"title":            "New Farm Alter",
-			"message":          "New Farm" + token0 + "/" + token1,
+			"title":            "New Farm" + token0 + "/" + token1,
+			"message":          "",
 			"notificationType": "1",
 		}
 		// send notification
