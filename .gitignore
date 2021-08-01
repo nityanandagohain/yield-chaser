@@ -1,0 +1,5 @@
+export.sh
+
+node_modules/
+
+build/

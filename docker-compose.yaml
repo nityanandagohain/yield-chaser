@@ -13,11 +13,6 @@ services:
         networks:
             - promnet
 
-    # node-exporter:
-    #     image: prom/node-exporter
-    #     ports:
-    #         - '9100:9100'
-
     alertmanager:
         image: prom/alertmanager
         # privileged: true
