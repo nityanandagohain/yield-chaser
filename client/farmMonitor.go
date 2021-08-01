@@ -105,7 +105,7 @@ func GetNewFarms(client *resty.Client) {
 			"notificationType": "1",
 		}
 		// send notification
-		_, err = client.R().SetBody(payload).Post("http://localhost:8080/notification")
+		_, err = client.R().SetBody(payload).Post("https://floating-hollows-80327.herokuapp.com/notification")
 		if err != nil {
 			log.Println("Failed to query subgraph", err.Error())
 		}
