@@ -34,7 +34,7 @@ func monitor(shutdownChannel chan bool, waitGroup *sync.WaitGroup, name string) 
 		default:
 			log.Println("Feching new data from : ", name)
 			client.GetNewFarms(restyClient)
-			time.Sleep(time.Second * 3)
+			time.Sleep(time.Hour * 1)
 		}
 	}
 }
