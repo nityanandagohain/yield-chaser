@@ -3,13 +3,11 @@ package client
 import (
 	"fmt"
 	"log"
-	"math/rand"
 	"strings"
 	"time"
 
 	"github.com/Jeffail/gabs/v2"
 	"github.com/go-resty/resty/v2"
-	"github.com/prometheus/client_golang/prometheus"
 )
 
 var uniswapPools map[string]bool
@@ -20,16 +18,6 @@ func init() {
 	uniswapPools = map[string]bool{}
 	quickswapPools = map[string]bool{}
 	balancerPools = map[string]bool{}
-}
-
-func GetAPY(client *resty.Client, gaugeVector *prometheus.GaugeVec) {
-	min := 10
-	max := 30
-	val1 := rand.Intn(max-min) + min
-	val2 := rand.Intn(max-min) + min
-	log.Println(val1)
-	gaugeVector.WithLabelValues("inch").Set(float64(val1))
-	gaugeVector.WithLabelValues("eth").Set(float64(val2))
 }
 
 type PoolResponse struct {
