@@ -197,7 +197,7 @@ func GetBalancerPools(client *resty.Client) *PoolResponse {
 func SendNotification(client *resty.Client, pool *PoolResponse) {
 	payload := map[string]string{
 		"title":            "New farm alert!",
-		"message":          pool.Name + " on " + pool.Platform + " , " + pool.Network + " , at: " + fmt.Sprint(time.Now().Format(time.RFC850)),
+		"message":          "Found new farm " + pool.Name + " on " + pool.Platform + ", " + pool.Network + " at " + fmt.Sprint(time.Now().Format(time.RFC850)) + ".",
 		"notificationType": "1",
 	}
 	// send notification
