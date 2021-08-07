@@ -5,31 +5,24 @@ import (
 	"log"
 	"math/rand"
 	"strings"
+	"time"
 
 	"github.com/Jeffail/gabs/v2"
 	"github.com/go-resty/resty/v2"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
-var pools map[string]bool
+var uniswapPools map[string]bool
+var quickswapPools map[string]bool
+var balancerPools map[string]bool
 
 func init() {
-	pools = map[string]bool{}
+	uniswapPools = map[string]bool{}
+	quickswapPools = map[string]bool{}
+	balancerPools = map[string]bool{}
 }
 
 func GetAPY(client *resty.Client, gaugeVector *prometheus.GaugeVec) {
-	// result := &ZapperResponse{}
-	// _, err := client.R().
-	// 	EnableTrace().
-	// 	SetResult(result).
-	// 	Get("https://api.zapper.fi/v1/pool-stats/1inch?network=ethereum&api_key=96e0cc51-a62e-42ca-acee-910ea7d2a241")
-	// if err != nil {
-	// 	log.Println("Failed to create resty client : %v", err)
-	// }
-	// calculate APY
-
-	// for now creating dummy data only for 1INCH pool
-
 	min := 10
 	max := 30
 	val1 := rand.Intn(max-min) + min
@@ -39,32 +32,44 @@ func GetAPY(client *resty.Client, gaugeVector *prometheus.GaugeVec) {
 	gaugeVector.WithLabelValues("eth").Set(float64(val2))
 }
 
-func GetNewFarms(client *resty.Client) {
+type PoolResponse struct {
+	ID          string
+	Name        string
+	TVL         string
+	DailyVolume string
+	APY         float32
+	Platform    string
+	Network     string
+}
+
+func GetUniSwapPools(client *resty.Client) *PoolResponse {
 	// get the tops pools from the subgraph
 	payload := map[string]string{
 		"operationName": "topPools",
-		"query":         "query topPools {\n  pools(first: 50, orderBy: createdAtTimestamp, orderDirection: desc) {\n    id\n    __typename\n createdAtTimestamp\n }\n}\n",
+		"query":         "query topPools {\n  pools(first: 20, orderBy: createdAtTimestamp, orderDirection: desc) {\n    id\n    __typename\n createdAtTimestamp\n }\n}\n",
 	}
 	res, err := client.R().SetBody(payload).Post("https://api.thegraph.com/subgraphs/name/uniswap/uniswap-v3")
 	if err != nil {
 		log.Println("Failed to query subgraph", err.Error())
+		return nil
 	}
 	jsonParsed, err := gabs.ParseJSON(res.Body())
 	if err != nil {
 		log.Println("Failed to unmarshal json fromm subgraph", err.Error())
+		return nil
 	}
 
 	newpools := []string{}
 	for _, child := range jsonParsed.Path("data.pools").Children() {
 		pool := child.Path("id").Data().(string)
-		if _, ok := pools[pool]; !ok {
+		if _, ok := uniswapPools[pool]; !ok {
 			newpools = append(newpools, pool)
 		}
 	}
 
 	if len(newpools) == 0 {
 		log.Println("No new pools found")
-		return
+		return nil
 	}
 
 	poolArrStr := ""
@@ -85,32 +90,154 @@ func GetNewFarms(client *resty.Client) {
 	res, err = client.R().SetBody(payload).Post("https://api.thegraph.com/subgraphs/name/uniswap/uniswap-v3")
 	if err != nil {
 		log.Println("Failed to query subgraph", err.Error())
+		return nil
 	}
 
 	poolsDataJson, err := gabs.ParseJSON(res.Body())
 	if err != nil {
 		log.Println("failed to parse pools response body")
+		return nil
+	}
+	pool := poolsDataJson.Path("data.pools").Children()[0]
+	poolResponse := PoolResponse{
+		ID:       pool.Path("id").Data().(string),
+		Name:     pool.Path("token0.symbol").Data().(string) + "/" + pool.Path("token1.symbol").Data().(string),
+		TVL:      pool.Path("totalValueLockedUSD").Data().(string),
+		Platform: "uniswap",
+		Network:  "Ethereum mainnet",
 	}
 
-	// fmt.Println(poolsDataJson)
-	for _, child := range poolsDataJson.Path("data.pools").Children() {
-		token0 := child.Path("token0.symbol").Data().(string)
-		token1 := child.Path("token1.symbol").Data().(string)
-		fmt.Println(token0 + "/" + token1)
+	uniswapPools[pool.Path("id").Data().(string)] = true
 
-		payload = map[string]string{
+	return &poolResponse
+}
 
-			"title":            "New Farm" + token0 + "/" + token1,
-			"message":          "",
-			"notificationType": "1",
-		}
-		// send notification
-		_, err = client.R().SetBody(payload).Post("https://floating-hollows-80327.herokuapp.com/notification")
-		if err != nil {
-			log.Println("Failed to query subgraph", err.Error())
-		}
-
-		break
+func GetQuickSwapPools(client *resty.Client) *PoolResponse {
+	// get the tops pools from the subgraph
+	payload := map[string]string{
+		"query": "{\n pairs(first: 5, orderBy: createdAtTimestamp, orderDirection: desc) {\n id,\n token0 {\n symbol,\n name\n },\n token1{\n symbol,\n name\n },\n volumeUSD\n totalSupply\n }\n}",
+	}
+	res, err := client.R().SetBody(payload).Post("https://api.thegraph.com/subgraphs/name/henrydapp/quickswap")
+	if err != nil {
+		log.Println("Failed to query subgraph", err.Error())
+		return nil
+	}
+	jsonParsed, err := gabs.ParseJSON(res.Body())
+	if err != nil {
+		log.Println("Failed to unmarshal json fromm subgraph", err.Error())
+		return nil
 	}
 
+	// newpools := []string{}
+	var pool *gabs.Container
+	for _, child := range jsonParsed.Path("data.pairs").Children() {
+		poolid := child.Path("id").Data().(string)
+		if _, ok := quickswapPools[poolid]; !ok {
+			pool = child
+			break
+		}
+	}
+
+	if pool == nil {
+		log.Println("No new pools found")
+		return nil
+	}
+
+	poolResponse := PoolResponse{
+		ID:       pool.Path("id").Data().(string),
+		Name:     pool.Path("token0.symbol").Data().(string) + "/" + pool.Path("token1.symbol").Data().(string),
+		TVL:      pool.Path("volumeUSD").Data().(string),
+		Platform: "QuickSwap",
+		Network:  "polygon mainnet",
+	}
+
+	quickswapPools[pool.Path("id").Data().(string)] = true
+
+	return &poolResponse
+}
+
+func GetBalancerPools(client *resty.Client) *PoolResponse {
+	// get the tops pools from the subgraph
+	payload := map[string]string{
+		"query": "query { pools (first: 10, orderBy: \"createTime\", orderDirection: \"desc\", where: {totalShares_gt: 0.01, id_not_in: [\"\"], poolType_not: \"Element\", tokensList_contains: []}, skip: 0) { id poolType swapFee tokensList totalLiquidity totalSwapVolume totalSwapFee createTime totalShares owner factory amp tokens { symbol address balance weight } } }",
+	}
+	res, err := client.R().SetBody(payload).Post("https://api.thegraph.com/subgraphs/name/balancer-labs/balancer-polygon-v2")
+	if err != nil {
+		log.Println("Failed to query subgraph", err.Error())
+		return nil
+	}
+	jsonParsed, err := gabs.ParseJSON(res.Body())
+	if err != nil {
+		log.Println("Failed to unmarshal json fromm subgraph", err.Error())
+		return nil
+	}
+
+	// newpools := []string{}
+	var pool *gabs.Container
+	for _, child := range jsonParsed.Path("data.pools").Children() {
+		poolid := child.Path("id").Data().(string)
+		if _, ok := balancerPools[poolid]; !ok {
+			pool = child
+			break
+		}
+	}
+
+	if pool == nil {
+		log.Println("No new pools found")
+		return nil
+	}
+
+	tokenName := ""
+	for _, child := range pool.Path("tokens").Children() {
+		tokenName += "/" + child.Path("symbol").Data().(string)
+	}
+	tokenName = strings.Trim(tokenName, "/")
+
+	poolResponse := PoolResponse{
+		ID:       pool.Path("id").Data().(string),
+		Name:     tokenName,
+		TVL:      pool.Path("totalLiquidity").Data().(string),
+		Platform: "Balancer",
+		Network:  "Polygon mainnet",
+	}
+
+	balancerPools[pool.Path("id").Data().(string)] = true
+
+	return &poolResponse
+}
+
+func SendNotification(client *resty.Client, pool *PoolResponse) {
+	payload := map[string]string{
+		"title":            "New farm alert!",
+		"message":          pool.Name + " on " + pool.Platform + " , " + pool.Network + " , at: " + fmt.Sprint(time.Now().Format(time.RFC850)),
+		"notificationType": "1",
+	}
+	// send notification
+	_, err := client.R().SetBody(payload).Post("https://floating-hollows-80327.herokuapp.com/notification")
+	if err != nil {
+		log.Println("Failed to query subgraph", err.Error())
+	}
+}
+
+func GetNewFarms(client *resty.Client) {
+
+	log.Println("Fetching new farms")
+	uniswapPool := GetUniSwapPools(client)
+
+	if uniswapPool != nil {
+		log.Println("uniswap pool: ", uniswapPool)
+
+		SendNotification(client, uniswapPool)
+	}
+
+	quickSwapPool := GetQuickSwapPools(client)
+	if quickSwapPool != nil {
+		log.Println("qcpool : ", quickSwapPool)
+		SendNotification(client, quickSwapPool)
+	}
+
+	balancerPool := GetBalancerPools(client)
+	if balancerPool != nil {
+		log.Println("balancer pool : ", balancerPool)
+	}
 }
